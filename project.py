@@ -78,6 +78,20 @@ def get_placement(matchID,my_puuid):
             placement = all_summoners[i]["placement"]
             return placement
 
+def get_time_length(matchID):
+    url = 'https://asia.api.riotgames.com/tft/match/v1/matches/' + matchID
+    response = requests.get(url, headers={"X-Riot-Token": api})
+    # unixtime_in_ms = response.json()["info"]["game_datetime"]
+    length_in_sec = response.json()["info"]["game_length"]
+    
+    # unixtime = unixtime_in_ms / 1000
+    # date_time = datetime.fromtimestamp(unixtime)
+    # time = date_time.strftime("%Y-%m-%d %H:%M:%S")
+
+    length = round(length_in_sec / 60)
+
+    return length
+
 
 def get_time(matchID):
     url = 'https://asia.api.riotgames.com/tft/match/v1/matches/' + matchID 
@@ -160,11 +174,15 @@ def get_info():
                 game_time = get_time(my_match_id)
                 print("time:", game_time)
 
+                time_length = get_time_length(my_match_id)
+                print("time and length:", time_length)
+
                 result = {
                     "ranks_tier_LP" : ranks_tier_LP,
                     "time" : game_time,
                     "game_type" : game_type,
-                    "placement" : placement
+                    "placement" : placement,
+                    "time_length" : time_length
                 }
                 
                 return render_template('result.html', name = name, result=result, other_summoner_in_game=other_summoner_in_game)

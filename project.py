@@ -1,8 +1,6 @@
 # python code, project.py
-from pickle import FALSE, NONE
 from flask import Flask,render_template,request
 import requests
-from pprint import pprint as pp
 from datetime import datetime
 
 def get_name():
@@ -83,13 +81,7 @@ def get_time_length(matchID):
     response = requests.get(url, headers={"X-Riot-Token": api})
     # unixtime_in_ms = response.json()["info"]["game_datetime"]
     length_in_sec = response.json()["info"]["game_length"]
-    
-    # unixtime = unixtime_in_ms / 1000
-    # date_time = datetime.fromtimestamp(unixtime)
-    # time = date_time.strftime("%Y-%m-%d %H:%M:%S")
-
     length = round(length_in_sec / 60)
-
     return length
 
 
@@ -103,19 +95,35 @@ def get_time(matchID):
     
     now = datetime.now()
     current_time = now.strftime("%H:%M:%S")
-
     time = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-
-
     return time
 
     # 24시간 이내이면 몇시간 전 게임인지 나타낼 것
     # 24시간 이후 48시간 이전이면 1일 전
     # 그 이후로는 그냥 지금 타임 (현재 get_time 에서 리턴되는 time 으로)
 
+def get_augments_and_traits(matchID,my_puuid):
+    url = 'https://asia.api.riotgames.com/tft/match/v1/matches/' + matchID
+    response = requests.get(url, headers={"X-Riot-Token": api})
+    all_participants = response.json()["metadata"]["participants"]
+    augments=response.json()["info"]["participants"][all_participants.index(my_puuid)]["augments"]
+    get_number_of_traits=len(response.json()["info"]["participants"][all_participants.index(my_puuid)]["traits"])
+    traits_with_tier={}
+    for x in range(get_number_of_traits):
+        if response.json()["info"]["participants"][all_participants.index(my_puuid)]["traits"][x]['tier_current'] > 0:
+            print(x)
+            traits_with_tier.update({response.json()["info"]["participants"][all_participants.index(my_puuid)]["traits"][x]['name']:response.json()["info"]["participants"][all_participants.index(my_puuid)]["traits"][x]['tier_current']})
+    
+    augments_and_traits = {
+        "augments" : augments,
+        "traits_with_tier" : traits_with_tier
+    }
+    print("augments and traits with dict form", augments_and_traits)
+
+    return augments_and_traits
 
 
-
+#-----------------------------------------------------------------------------------#
 app = Flask(__name__, template_folder="templates")
 api = 'RGAPI-6cf8c713-86be-4205-8be5-44b697a1cfd8'
 
@@ -147,7 +155,7 @@ def get_info():
             if not encrypted_id:
                 return render_template('index.html')
             else:
-                
+
                 # 랭크 & 티어
                 ranks_tier_LP = get_rank_tier_LP(encrypted_id)
                 print('rank is:', ranks_tier_LP)
@@ -177,12 +185,16 @@ def get_info():
                 time_length = get_time_length(my_match_id)
                 print("time and length:", time_length)
 
+                augments_and_traits=get_augments_and_traits(my_match_id, my_puuid)
+                print("my augments and traits were:", augments_and_traits)
+
                 result = {
                     "ranks_tier_LP" : ranks_tier_LP,
                     "time" : game_time,
                     "game_type" : game_type,
                     "placement" : placement,
-                    "time_length" : time_length
+                    "time_length" : time_length,
+                    "augments_and_traits" : augments_and_traits
                 }
                 
                 return render_template('result.html', name = name, result=result, other_summoner_in_game=other_summoner_in_game)
